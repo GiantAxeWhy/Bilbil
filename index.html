@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="./assets/index.css">
+    <link rel="stylesheet" href="./assets/reset.css">
+    <script src="./axios.js"></script>
+    <script src="./request.js"></script>
+    <script src="./vue.js"></script>
+</head>
+<body>
+        <div id="app" @scroll="handleScroll">
+            <div class="header">
+                <div class="logo">
+                    <img src="./img/blogo.jpg" style="height:28px;width:62px;">
+                </div>
+                <div class="search-input">
+                    <img src="./img/search.png" style="height:18px;width:16px;margin-left: 5px;">
+                    <span>北冥有鱼，化而为鹏</span>
+                </div>
+                <div class="avatar">
+                    <img src="./img/akari.jpg" style="width:24px;height:25px;">
+                </div>
+                <div class="download-app">下载app</div>
+            </div>
+<!--注意v-if高于v-for 不能放一起-->
+            <template  v-if="navList.length">
+            <div
+                    v-for="navIndex in 2"
+                    :key="navIndex"
+                 :class="{'nav-box':navIndex === 1,
+                    'hide-nav-box':navIndex ===2,
+                    'hide':navIndex ===2 && navHide}"
+                >
+                <ul class="nav-list">
+                    <li class="nav"
+                        @click="handleNavClick(index)"
+                        :class="{
+                        big:nav.title.length===3 && navIndex ===2,
+                        active:index === navActiveIndex
+                    }" v-for="(nav,index) in navList" :key="nav.id">
+                        {{nav.title}}
+                    </li>
+                </ul>
+                <div class="down" v-if="navIndex ===1" @click="handleClick">
+                    <img src="./img/down.png" style="width:16px;height:31px;">
+                </div>
+                <div class="up" v-else @click="handleClick">
+                    <img src="./img/up.png" style="width:16px;height:31px;">
+                </div>
+            </div>
+            </template>
+            <div
+                    v-if="bannerList.length"
+                    class="banner-box"
+            >
+                <ul class="banner-list"
+                    :style="bannerStyle"
+                    @transitionend="handleTransitionend"
+                >
+                    <li class="banner" v-for="banner in bannerList" :key="banner.id">
+                        <img :src="banner.poster" :alt="banner.title" class="poster">
+                    </li>
+                </ul>
+                <ul class="index-list">
+                    <li v-for="index in bannerList.length - 1"
+                        class="index"
+                        :key="index"
+                        :class="{
+                            active:index -1 === bannerActiveIndex % 3
+                        }"
+                    >
+
+                    </li>
+                </ul>
+
+            </div>
+            <!--视频列表区域-->
+            <div
+                    v-if="videoList.length"
+                    class="video-box"
+            >
+                <ul class="video-list">
+                    <li v-for="video in videoList" :key="video.id"
+                            class="video">
+                        <div class="poster">
+                            <img :src="video.poster" :alt="video.title">
+                            <div class="info">
+                                <div class="play">
+                                    <img src="./img/video.png" style="height:14px;width:14px;margin-right: 5px;fill:#fff">
+                                    {{video.play > 10000 ?video.play / 10000 +'万':video.play}}
+                                </div>
+                                <div class="rank"  v-if="video.rank">
+                                    <img src="./img/message.png" style="height:14px;width:14px;margin-right-left: 5px;fill:#fff">
+                                    {{video.rank > 10000 ?video.rank / 10000 +'万':video.rank}}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="title">
+                            {{video.title}}
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!--底部区域-->
+            <div class="footer">
+                <p>广播电视节目制作经营许可证：（沪）字第01248号</p>
+                <p>网络文化经营许可证 沪网文【2019】3804-274号</p>
+            </div>
+        </div>
+
+<script>
+    const vm = new Vue({
+        el:'#app',
+        data:{
+          navList:[],
+            navHide:true,
+            navActiveIndex:0,
+            bannerList:[],
+            bannerWidth:350,
+            videoList:[],
+            videoCount:'0',
+            videoGetting:false,
+            bannerStyle:{
+              left:0,
+                transition:'left .3s'
+            },
+            bannerActiveIndex:0,
+        },
+        methods:{
+            handleClick(){
+                    this.navHide = !this.navHide;
+            },
+            handleNavClick(index){
+                this.navActiveIndex = index;
+            },
+            autoMove(){
+              setTimeout(()=>{
+                   if(this.bannerActiveIndex===0){
+                       this.bannerStyle.transition = 'left .3s';
+                   }
+                  this.bannerActiveIndex++;
+                  this.bannerStyle.left = -(this.bannerActiveIndex*this.bannerWidth) +'px';
+              },1500)
+            },
+            handleScroll(e){
+
+                let {scrollHeight,offsetHeight,scrollTop}= e.target;
+                let toBottom = scrollHeight-offsetHeight-scrollTop;
+                const videoLength = this.videoList.length;
+                if(videoLength==this.videoCount){return;}
+                if(toBottom<200 && !this.videoGetting){
+                    this.videoGetting = true;
+                    axios.get('video',{params:{start:this.videoList.length,offset:12}}).then(res=>{
+                            this.videoList.push(...res.data);
+                            this.videoGetting = false;
+
+                    })
+                }
+            },
+            handleTransitionend(){
+                if( this.bannerActiveIndex===3){
+                    this.bannerActiveIndex=0;
+                    this.bannerStyle.left = 0 ;
+                    this.bannerStyle.transition = 'none' ;
+
+                }
+                this.autoMove();
+
+            }
+        },
+
+        created(){
+            axios.all([
+                axios.get('nav'),
+            axios.get('banner'),
+            axios.get('video',{params:{start:0,offset:12}}),
+            ]).then(axios.spread((navRes,bannerRes,videoRes)=>{
+
+                this.navList = navRes;
+
+                let arr = {...bannerRes[0]};
+                arr.id = Math.floor(Math.random()*10000000)
+                this.bannerList = [...bannerRes,arr];
+
+                this.videoCount = videoRes.count;
+                this.videoList=videoRes.data;
+            }));
+   /*         axios.get('nav').then(res=>{
+                    this.navList = res
+
+            })
+                axios.get('banner').then(res=>{
+                    let arr = {...res[0]};
+                    arr.id = Math.floor(Math.random()*10000000)
+                    this.bannerList = [...res,arr]
+
+            })
+            axios.get('video',{params:{start:0,offset:12}}).then(res=>{
+                console.log('1',res);
+                    this.videoCount = res.count;
+                  this.videoList=res.data;
+
+            })*/
+        },
+        mounted(){
+            this.autoMove();
+        }
+    })
+</script>
+</body>
+</html>
